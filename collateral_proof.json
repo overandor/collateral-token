@@ -1,0 +1,81 @@
+{
+  "overall_merkle_root": "e5286eb81195c4f8a6243906ed4f20f93904689c8fc605344d9622491018ae63",
+  "total_collateral_usd": 551500,
+  "total_collateral_cents": 55150000,
+  "all_repos_verified": true,
+  "verification_results": {
+    "membra-core": true,
+    "membra-ecosystem": true,
+    "membra-finance": true,
+    "language-fi": true,
+    "overmanifold": true,
+    "ai-infrastructure": true,
+    "applications": true,
+    "documentation": true,
+    "data-assets": true,
+    "archive": true
+  },
+  "collateral_breakdown": {
+    "membra-core": {
+      "valuation_usd": 102500,
+      "merkle_root": "1b744d0d3a9a6bd1ac9342f59a57b98e038a8ca412126d042f90f3d24ef6b430",
+      "total_files": 130378,
+      "verified": true
+    },
+    "membra-ecosystem": {
+      "valuation_usd": 27500,
+      "merkle_root": "6c3fceb95292c4e4ab67085da0f483f3ff8dddc674c5dd521f96df5bf4146455",
+      "total_files": 10315,
+      "verified": true
+    },
+    "membra-finance": {
+      "valuation_usd": 92500,
+      "merkle_root": "3d59f1bf22382cfb7bbf292c85ec201b4688927ce32b74d4093393b570328a99",
+      "total_files": 103833,
+      "verified": true
+    },
+    "language-fi": {
+      "valuation_usd": 40000,
+      "merkle_root": "bed2d569851b3d422ad74939b0d93c07cedf94b4c3486cce7367da39df1d9cb6",
+      "total_files": 190,
+      "verified": true
+    },
+    "overmanifold": {
+      "valuation_usd": 117500,
+      "merkle_root": "e5d005daf945332b306226d3b821849c8ad6dbae1b56ee15b55648d691b23b14",
+      "total_files": 30974,
+      "verified": true
+    },
+    "ai-infrastructure": {
+      "valuation_usd": 57500,
+      "merkle_root": "5f327e1356d1acc1e9c94cafad3bebf0e218bf26b1c4c12a763b2fd5ca726bc8",
+      "total_files": 38616,
+      "verified": true
+    },
+    "applications": {
+      "valuation_usd": 35000,
+      "merkle_root": "57e3bb29ca52b112bf7b193ebbf807bf7a955e4fb4e7ec7f5f33f6ebf6dcaa0e",
+      "total_files": 46479,
+      "verified": true
+    },
+    "documentation": {
+      "valuation_usd": 14000,
+      "merkle_root": "5aa198bfdff57f9897faafe1cf472d3caedf4beee576ed788c965fe307598185",
+      "total_files": 70,
+      "verified": true
+    },
+    "data-assets": {
+      "valuation_usd": 45000,
+      "merkle_root": "11d87e7438072f1564db48ad09f19a99e12af1ddfaa700eed4219613022fe1a2",
+      "total_files": 238,
+      "verified": true
+    },
+    "archive": {
+      "valuation_usd": 20000,
+      "merkle_root": "06a7ff53cbb2b034e4b14c7e8fb9f0e85a0c47fc8ed1717f8e5e553434e5892e",
+      "total_files": 36804,
+      "verified": true
+    }
+  },
+  "timestamp": "2026-05-19T03:30:22.835466Z"
+}
