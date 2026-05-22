@@ -1,3 +1,22 @@
-[tool.anchor]
-features = []
+[features]
 seeds = true
+skip-lint = false
+
+[programs.localnet]
+collateral_usd = "CUsD111111111111111111111111111111111111111"
+
+[programs.devnet]
+collateral_usd = "CUsD111111111111111111111111111111111111111"
+
+[programs.mainnet]
+collateral_usd = "CUsD111111111111111111111111111111111111111"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "cargo test"
