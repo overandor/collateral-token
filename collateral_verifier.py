@@ -1,175 +1,175 @@
 #!/usr/bin/env python3
 """
-Collateral Verification System for CUSD Token
-Integrates Merkle tree verification with collateral valuation
+Reviewed Evidence Verifier
+
+This script combines a Merkle report with an explicit appraisal JSON file.
+It does not invent values. If appraisal data is missing, valuation is zero
+and the proof is marked incomplete.
 """
 
-import json
+from __future__ import annotations
+
+import argparse
 import hashlib
+import json
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
-import requests
+from typing import Dict, Any
+
 
 class CollateralVerifier:
-    """Verifies collateral integrity and calculates USD valuation"""
-    
+    """Verifies evidence integrity and calculates reviewed valuation."""
+
     def __init__(self, merkle_report_path: str, appraisal_report_path: str):
         self.merkle_report_path = Path(merkle_report_path)
         self.appraisal_report_path = Path(appraisal_report_path)
-        self.merkle_data = self._load_merkle_data()
+        self.merkle_data = self._load_json(self.merkle_report_path, required=True)
         self.appraisal_data = self._load_appraisal_data()
-        
-    def _load_merkle_data(self) -> Dict:
-        """Load Merkle tree data from JSON report"""
-        with open(self.merkle_report_path, 'r') as f:
+
+    @staticmethod
+    def _load_json(path: Path, required: bool = False) -> Dict[str, Any]:
+        if not path.exists():
+            if required:
+                raise FileNotFoundError(f"required file not found: {path}")
+            return {}
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    
-    def _load_appraisal_data(self) -> Dict:
-        """Load appraisal data (parse from markdown)"""
-        # For now, return hardcoded appraisal values
-        # In production, parse from APPRAISAL_REPORT.md
-        return {
-            "membra-core": {"min": 85000, "max": 120000, "mid": 102500},
-            "membra-ecosystem": {"min": 20000, "max": 35000, "mid": 27500},
-            "membra-finance": {"min": 75000, "max": 110000, "mid": 92500},
-            "language-fi": {"min": 30000, "max": 50000, "mid": 40000},
-            "overmanifold": {"min": 95000, "max": 140000, "mid": 117500},
-            "ai-infrastructure": {"min": 45000, "max": 70000, "mid": 57500},
-            "applications": {"min": 25000, "max": 45000, "mid": 35000},
-            "documentation": {"min": 10000, "max": 18000, "mid": 14000},
-            "data-assets": {"min": 35000, "max": 55000, "mid": 45000},
-            "archive": {"min": 15000, "max": 25000, "mid": 20000}
+
+    def _load_appraisal_data(self) -> Dict[str, Any]:
+        """Load explicit appraisal JSON.
+
+        Expected shape:
+        {
+          "reviewer": "name or key id",
+          "reviewed_at": "ISO-8601 timestamp",
+          "assets": {
+            "repo-name": {
+              "min": 1000,
+              "max": 3000,
+              "mid": 2000,
+              "confidence": 0.65,
+              "reason": "short explanation"
+            }
+          }
         }
-    
+        """
+        data = self._load_json(self.appraisal_report_path, required=False)
+        if "assets" in data and isinstance(data["assets"], dict):
+            return data["assets"]
+        if data:
+            # Backward-compatible shape: repo -> valuation object.
+            return data
+        return {}
+
     def verify_repo_integrity(self, repo_name: str, expected_root: str) -> bool:
-        """Verify repository integrity against expected Merkle root"""
+        """Verify repository integrity against an externally supplied expected root."""
         if repo_name not in self.merkle_data:
             return False
-        
-        actual_root = self.merkle_data[repo_name]["merkle_root"]
-        return actual_root == expected_root
-    
+        actual_root = self.merkle_data[repo_name].get("merkle_root", "")
+        return bool(expected_root) and actual_root == expected_root
+
     def verify_all_repos(self) -> Dict[str, bool]:
-        """Verify all repositories"""
-        results = {}
-        for repo_name, repo_data in self.merkle_data.items():
-            expected_root = repo_data["merkle_root"]
-            results[repo_name] = self.verify_repo_integrity(repo_name, expected_root)
+        """Verify all appraised repositories against Merkle report entries."""
+        results: Dict[str, bool] = {}
+        for repo_name, appraisal in self.appraisal_data.items():
+            expected_root = appraisal.get("merkle_root") or self.merkle_data.get(repo_name, {}).get("expected_merkle_root")
+            results[repo_name] = self.verify_repo_integrity(repo_name, expected_root or "")
         return results
-    
-    def calculate_total_collateral(self, valuation_type: str = "mid") -> int:
-        """Calculate total collateral value in USD cents"""
-        total = 0
+
+    def calculate_total_reviewed_value_cents(self, valuation_type: str = "mid") -> int:
+        """Calculate total reviewed value in USD cents from explicit appraisal input."""
+        total_usd = 0.0
+        for appraisal in self.appraisal_data.values():
+            value = appraisal.get(valuation_type)
+            if isinstance(value, (int, float)) and value > 0:
+                total_usd += float(value)
+        return int(round(total_usd * 100))
+
+    def get_collateral_breakdown(self) -> Dict[str, Any]:
+        """Get detailed reviewed evidence breakdown."""
+        breakdown: Dict[str, Any] = {}
+        verification = self.verify_all_repos()
         for repo_name, appraisal in self.appraisal_data.items():
-            if valuation_type in appraisal:
-                total += appraisal[valuation_type]
-        return total * 100  # Convert to cents
-    
-    def get_collateral_breakdown(self) -> Dict:
-        """Get detailed collateral breakdown"""
-        breakdown = {}
-        for repo_name, appraisal in self.appraisal_data.items():
-            if repo_name in self.merkle_data:
-                breakdown[repo_name] = {
-                    "valuation_usd": appraisal["mid"],
-                    "merkle_root": self.merkle_data[repo_name]["merkle_root"],
-                    "total_files": self.merkle_data[repo_name]["total_files"],
-                    "verified": self.verify_repo_integrity(repo_name, self.merkle_data[repo_name]["merkle_root"])
-                }
+            repo_data = self.merkle_data.get(repo_name, {})
+            breakdown[repo_name] = {
+                "reviewed_value_usd": appraisal.get("mid", 0),
+                "confidence": appraisal.get("confidence", 0),
+                "reason": appraisal.get("reason", ""),
+                "merkle_root": repo_data.get("merkle_root", ""),
+                "expected_merkle_root": appraisal.get("merkle_root", ""),
+                "total_files": repo_data.get("total_files", repo_data.get("file_count", 0)),
+                "verified": verification.get(repo_name, False),
+            }
         return breakdown
-    
+
     def get_overall_merkle_root(self) -> str:
-        """Get overall Merkle root for all repositories"""
-        # Load from MERKLE_SUMMARY.json if available
+        """Get overall Merkle root for all repositories if available."""
         summary_path = self.merkle_report_path.parent / "MERKLE_SUMMARY.json"
         if summary_path.exists():
-            with open(summary_path, 'r') as f:
+            with open(summary_path, "r", encoding="utf-8") as f:
                 summary = json.load(f)
                 return summary.get("overall_merkle_root", "")
         return ""
-    
-    def generate_collateral_proof(self) -> Dict:
-        """Generate collateral proof for on-chain verification"""
+
+    def packet_hash(self) -> str:
+        payload = {
+            "merkle_report": self.merkle_data,
+            "appraisal_assets": self.appraisal_data,
+        }
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
+
+    def generate_evidence_proof(self) -> Dict[str, Any]:
+        """Generate reviewed evidence proof for downstream on-chain reference."""
         verification_results = self.verify_all_repos()
-        all_verified = all(verification_results.values())
-        
+        all_verified = bool(verification_results) and all(verification_results.values())
+        appraisal_present = bool(self.appraisal_data)
+
         return {
+            "schema": "reviewed-evidence-proof-v1",
+            "packet_hash": self.packet_hash(),
             "overall_merkle_root": self.get_overall_merkle_root(),
-            "total_collateral_usd": self.calculate_total_collateral("mid") // 100,
-            "total_collateral_cents": self.calculate_total_collateral("mid"),
+            "reviewed_value_usd": self.calculate_total_reviewed_value_cents("mid") / 100,
+            "reviewed_value_cents": self.calculate_total_reviewed_value_cents("mid"),
+            "appraisal_present": appraisal_present,
             "all_repos_verified": all_verified,
             "verification_results": verification_results,
-            "collateral_breakdown": self.get_collateral_breakdown(),
-            "timestamp": self._get_current_timestamp()
+            "breakdown": self.get_collateral_breakdown(),
+            "truth_label": "reviewed_value_only_not_market_guarantee",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
         }
-    
-    def _get_current_timestamp(self) -> str:
-        """Get current ISO timestamp"""
-        from datetime import datetime
-        return datetime.utcnow().isoformat() + "Z"
-    
+
     def export_for_chain(self, output_path: str):
-        """Export collateral proof for on-chain submission"""
-        proof = self.generate_collateral_proof()
-        with open(output_path, 'w') as f:
-            json.dump(proof, f, indent=2)
-        print(f"Collateral proof exported to: {output_path}")
+        """Export reviewed evidence proof for downstream on-chain reference."""
+        proof = self.generate_evidence_proof()
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(proof, f, indent=2, sort_keys=True)
+        print(f"Evidence proof exported to: {output_path}")
 
 
-class PriceOracle:
-    """USD price oracle for collateral valuation"""
-    
-    def __init__(self):
-        self.base_url = "https://api.coingecko.com/api/v3"
-    
-    def get_sol_price(self) -> float:
-        """Get current SOL price in USD"""
-        try:
-            response = requests.get(f"{self.base_url}/simple/price?ids=solana&vs_currencies=usd")
-            data = response.json()
-            return data["solana"]["usd"]
-        except Exception as e:
-            print(f"Error fetching SOL price: {e}")
-            return 150.0  # Fallback price
-    
-    def get_usdc_price(self) -> float:
-        """Get USDC price (should be ~1.0)"""
-        try:
-            response = requests.get(f"{self.base_url}/simple/price?ids=usd-coin&vs_currencies=usd")
-            data = response.json()
-            return data["usd-coin"]["usd"]
-        except Exception as e:
-            print(f"Error fetching USDC price: {e}")
-            return 1.0  # Fallback price
-    
-    def calculate_collateral_ratio(self, collateral_usd: int, token_supply: int, token_decimals: int = 6) -> float:
-        """Calculate collateral ratio as percentage"""
-        collateral_usd_float = collateral_usd / 100  # Convert cents to dollars
-        token_supply_float = token_supply / (10 ** token_decimals)
-        
-        if token_supply_float == 0:
-            return 100.0  # 100% if no supply
-        
-        return (collateral_usd_float / token_supply_float) * 100
+class EvidenceMonitor:
+    """Monitor reviewed evidence ratio against token supply."""
 
-
-class CollateralMonitor:
-    """Monitor collateral health and generate alerts"""
-    
-    def __init__(self, verifier: CollateralVerifier, oracle: PriceOracle):
+    def __init__(self, verifier: CollateralVerifier):
         self.verifier = verifier
-        self.oracle = oracle
         self.alert_thresholds = {
-            "warning": 105.0,  # 105% collateral ratio
-            "critical": 100.0,  # 100% collateral ratio
-            "emergency": 95.0   # 95% collateral ratio
+            "warning": 105.0,
+            "critical": 100.0,
+            "emergency": 95.0,
         }
-    
-    def check_collateral_health(self, token_supply: int) -> Dict:
-        """Check collateral health status"""
-        collateral_cents = self.verifier.calculate_total_collateral("mid")
-        ratio = self.oracle.calculate_collateral_ratio(collateral_cents, token_supply)
-        
+
+    @staticmethod
+    def calculate_ratio(reviewed_value_cents: int, token_supply_atoms: int, token_decimals: int = 6) -> float:
+        reviewed_value_usd = reviewed_value_cents / 100
+        token_supply_units = token_supply_atoms / (10 ** token_decimals)
+        if token_supply_units == 0:
+            return float("inf")
+        return (reviewed_value_usd / token_supply_units) * 100
+
+    def check_health(self, token_supply_atoms: int) -> Dict[str, Any]:
+        reviewed_value_cents = self.verifier.calculate_total_reviewed_value_cents("mid")
+        ratio = self.calculate_ratio(reviewed_value_cents, token_supply_atoms)
+
         status = "healthy"
         if ratio <= self.alert_thresholds["emergency"]:
             status = "emergency"
@@ -177,63 +177,38 @@ class CollateralMonitor:
             status = "critical"
         elif ratio <= self.alert_thresholds["warning"]:
             status = "warning"
-        
+
         return {
-            "collateral_ratio": ratio,
+            "ratio_percent": ratio,
             "status": status,
-            "collateral_usd": collateral_cents / 100,
-            "token_supply": token_supply,
-            "recommended_action": self._get_recommended_action(status)
+            "reviewed_value_usd": reviewed_value_cents / 100,
+            "token_supply_atoms": token_supply_atoms,
+            "truth_label": "ratio_based_on_reviewed_evidence_not_market_liquidity",
         }
-    
-    def _get_recommended_action(self, status: str) -> str:
-        """Get recommended action based on status"""
-        actions = {
-            "healthy": "Continue normal operations",
-            "warning": "Monitor closely, consider adding collateral",
-            "critical": "Pause minting, add collateral immediately",
-            "emergency": "Emergency pause, force redemption, add collateral"
-        }
-        return actions.get(status, "Unknown status")
 
 
 def main():
-    """Main execution function"""
-    # Initialize verifier
-    base_dir = Path("/Users/alep/Downloads/consolidated_repos")
-    merkle_report = base_dir / "MERKLE_TREES_REPORT.json"
-    appraisal_report = base_dir / "APPRAISAL_REPORT.md"
-    
-    verifier = CollateralVerifier(merkle_report, appraisal_report)
-    
-    # Verify all repos
-    print("Verifying repository integrity...")
-    verification_results = verifier.verify_all_repos()
-    for repo, verified in verification_results.items():
-        status = "✅" if verified else "❌"
-        print(f"  {status} {repo}")
-    
-    # Generate collateral proof
-    print("\nGenerating collateral proof...")
-    proof = verifier.generate_collateral_proof()
-    print(f"  Total Collateral: ${proof['total_collateral_usd']:,.2f} USD")
-    print(f"  All Verified: {proof['all_repos_verified']}")
-    print(f"  Overall Merkle Root: {proof['overall_merkle_root']}")
-    
-    # Export for chain
-    output_path = base_dir / "collateral_token" / "collateral_proof.json"
-    verifier.export_for_chain(output_path)
-    
-    # Initialize oracle and monitor
-    print("\nInitializing price oracle...")
-    oracle = PriceOracle()
-    monitor = CollateralMonitor(verifier, oracle)
-    
-    # Check health (example with 0 supply)
-    health = monitor.check_collateral_health(0)
-    print(f"  Collateral Ratio: {health['collateral_ratio']:.2f}%")
+    parser = argparse.ArgumentParser(description="Generate reviewed evidence proof")
+    parser.add_argument("--merkle-report", required=True, help="Path to MERKLE_TREES_REPORT.json")
+    parser.add_argument("--appraisal-json", required=True, help="Path to explicit appraisal JSON")
+    parser.add_argument("--output", default="evidence_proof.json", help="Output JSON path")
+    parser.add_argument("--supply-atoms", type=int, default=0, help="Optional token supply atoms for health check")
+    args = parser.parse_args()
+
+    verifier = CollateralVerifier(args.merkle_report, args.appraisal_json)
+    proof = verifier.generate_evidence_proof()
+    verifier.export_for_chain(args.output)
+
+    print("Reviewed evidence proof")
+    print(f"  Packet hash: {proof['packet_hash']}")
+    print(f"  Reviewed value: ${proof['reviewed_value_usd']:,.2f}")
+    print(f"  Appraisal present: {proof['appraisal_present']}")
+    print(f"  All repos verified: {proof['all_repos_verified']}")
+
+    monitor = EvidenceMonitor(verifier)
+    health = monitor.check_health(args.supply_atoms)
+    print(f"  Ratio: {health['ratio_percent']}")
     print(f"  Status: {health['status']}")
-    print(f"  Recommended Action: {health['recommended_action']}")
 
 
 if __name__ == "__main__":
