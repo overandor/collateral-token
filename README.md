@@ -1,202 +1,125 @@
-# CUSD - Collateral-Backed USD Token
+# Collateral Token — Reviewed Evidence Token Prototype
 
-A fully collateralized USD token on Solana, backed by $501,500 in verified digital assets.
+Experimental Solana/Anchor program for representing reviewed software-asset evidence packets on-chain.
+
+This repository is **not** a launched USD stablecoin, not a public investment product, and not a guarantee of redemption, market value, or liquidity.
 
 ## Overview
 
-CUSD is a stablecoin backed by:
-- 10 consolidated software repositories
-- Cryptographically verified via Merkle trees
-- Appraised at $501,500 (mid-range valuation)
-- 110% collateral ratio minimum
-- On-chain verification of asset integrity
+The program can store and update compact state for a reviewed evidence packet:
 
-## Token Specifications
+- authority
+- token mint
+- reviewed evidence valuation in USD cents
+- token supply in mint atoms
+- evidence Merkle root
+- required ratio in basis points
+- emergency pause flag
 
-- **Name:** Collateral USD
-- **Symbol:** CUSD
-- **Decimals:** 6 (USDC standard)
-- **Chain:** Solana
-- **Collateral Ratio:** 110% minimum
-- **Backing:** Digital assets (software repositories)
-- **Verification:** Merkle tree cryptography
+The off-chain evidence packet must be produced and reviewed separately. The program does not appraise software assets by itself.
 
-## Architecture
+## Intended Architecture
 
-```
-CUSD Token (SPL)
-    ↓
-Collateral Vault (Anchor Program)
-    ↓
-Asset Registry (Merkle Verified)
-    ↓
-Price Oracle (USD)
-    ↓
-Governance (Multi-sig)
+```text
+DollarFS / evidence engine
+    -> reviewed appraisal packet
+    -> file manifest hash
+    -> appraisal report hash
+    -> evidence Merkle root
+    -> Solana representation token / receipt state
 ```
 
-## Collateral Breakdown
+The token layer references reviewed evidence. It must not invent value.
 
-| Repository | Value (USD) | Merkle Root | Status |
-|------------|-------------|-------------|---------|
-| membra-core | $102,500 | `1b744d...` | ✅ Verified |
-| membra-finance | $92,500 | `3d59f1...` | ✅ Verified |
-| overmanifold | $117,500 | `e5d005...` | ✅ Verified |
-| ai-infrastructure | $57,500 | `5f327e...` | ✅ Verified |
-| data-assets | $45,000 | `11d87e...` | ✅ Verified |
-| applications | $35,000 | `57e3bb...` | ✅ Verified |
-| language-fi | $40,000 | `bed2d5...` | ✅ Verified |
-| membra-ecosystem | $27,500 | `6c3fce...` | ✅ Verified |
-| archive | $20,000 | `06a7ff...` | ✅ Verified |
-| documentation | $14,000 | `5aa198...` | ✅ Verified |
+## What is implemented
 
-**Total Collateral:** $501,500 USD
+- Anchor vault initialization
+- authority-gated Merkle root update
+- authority-gated reviewed valuation update
+- authority-gated minting
+- token-owner burn
+- emergency pause
+- authority transfer
+- ratio checks using cents versus token atoms
 
-## Installation
+## What is not implemented
 
-### Prerequisites
-- Rust and Cargo
-- Solana CLI
-- Anchor Framework
-- Python 3.8+
+- production deployment
+- verified program id
+- legal review
+- redemption system
+- independent appraisal oracle
+- external proof of market value
+- audited governance
+- formal collateral or lending approval
 
-### Install Dependencies
+## Token accounting
+
+The program treats token supply as 6-decimal mint atoms.
+
+```text
+1 token = 1_000_000 atoms
+1 USD = 100 cents
+ratio_bps = reviewed_value_cents * 10_000 / supply_value_cents
+```
+
+Minting is restricted to the vault authority. Public permissionless minting is intentionally not supported in this prototype.
+
+## Build
+
 ```bash
-# Install Solana CLI
-sh -c "$(curl -sSfL https://release.solana.com/v1.18.0/install)"
-
-# Install Anchor
-cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-avm install latest
-avm use latest
-
-# Install Python dependencies
-pip install anchorpy requests
-```
-
-## Deployment
-
-### 1. Build the Program
-```bash
-cd programs/collateral_usd
 anchor build
 ```
 
-### 2. Deploy to Devnet
+## Devnet deployment
+
+Only deploy after replacing the placeholder program id in:
+
+- `programs/collateral_usd/src/lib.rs`
+- `Anchor.toml`
+
+Then:
+
 ```bash
 anchor deploy --provider.cluster devnet
 ```
 
-### 3. Initialize the Vault
-```bash
-python deploy.py
-```
+## Evidence packet requirements
 
-### 4. Update Collateral Verification
-```bash
-python collateral_verifier.py
-```
+A real evidence packet should include:
 
-## Usage
+- packet id
+- packet hash
+- file manifest hash
+- appraisal report hash
+- reviewer signature
+- reviewed value in cents
+- confidence score
+- risk flags
+- expiration or review date
+- status: draft, reviewed, superseded, revoked
 
-### Minting CUSD
-```python
-from solana.keypair import Keypair
-from anchorpy import Program, Provider
+## Safety boundary
 
-# Load program and mint tokens
-program = await load_program()
-await program.rpc["mint_collateral_usd"](
-    amount=1_000_000,  # 1 CUSD (6 decimals)
-    # ... accounts
-)
-```
+Use accurate wording:
 
-### Burning CUSD
-```python
-await program.rpc["burn_collateral_usd"](
-    amount=1_000_000,  # 1 CUSD
-    # ... accounts
-)
-```
+- "reviewed evidence token"
+- "evidence receipt"
+- "software-asset evidence representation"
+- "prototype"
 
-### Checking Collateral Ratio
-```python
-from collateral_verifier import CollateralMonitor
+Avoid overclaiming:
 
-monitor = CollateralMonitor(verifier, oracle)
-health = monitor.check_collateral_health(token_supply)
-print(f"Collateral Ratio: {health['collateral_ratio']:.2f}%")
-print(f"Status: {health['status']}")
-```
+- do not call it a live stablecoin
+- do not claim guaranteed backing
+- do not claim guaranteed liquidity
+- do not claim legal collateral status
+- do not claim redemption rights without a separate legal and operational structure
 
-## Verification
+## Related system
 
-### Merkle Tree Verification
-```bash
-python generate_merkle_trees.py
-```
-
-### Collateral Proof Generation
-```bash
-python collateral_verifier.py
-```
-
-### On-Chain Verification
-```bash
-# Check vault state
-solana account <VAULT_ADDRESS>
-```
-
-## Security Features
-
-- **110% Collateral Ratio:** Over-collateralized for safety
-- **Merkle Tree Verification:** Cryptographic proof of asset integrity
-- **Multi-sig Governance:** 3/5 signature requirement
-- **Emergency Pause:** Immediate halt if needed
-- **Circuit Breakers:** Automatic pause at 90% collateral ratio
-- **Audit Trail:** All transactions logged and verifiable
-
-## Risk Controls
-
-### Collateral Thresholds
-- **Target:** 110%
-- **Warning:** 105%
-- **Critical:** 100%
-- **Emergency:** 95%
-
-### Governance
-- Multi-sig authority (3/5 required)
-- 24-hour timelock for critical changes
-- Emergency pause capability (2/5 signatures)
-- Transparent upgrade process
-
-## Monitoring
-
-### Health Checks
-```bash
-# Run health check
-python collateral_verifier.py
-```
-
-### Alerts
-- Collateral ratio drops below threshold
-- Merkle root verification fails
-- Emergency pause triggered
-- Governance actions required
-
-## Files
-
-- `DESIGN.md` - System architecture and design
-- `programs/collateral_usd/src/lib.rs` - Anchor smart contract
-- `collateral_verifier.py` - Collateral verification system
-- `deploy.py` - Deployment script
-- `generate_merkle_trees.py` - Merkle tree generation
+This repo is intended to sit downstream of a file appraisal/evidence engine such as DollarFS. DollarFS should produce the reviewed packet; this program can reference the packet hash and enforce basic on-chain accounting around a representation token.
 
 ## License
 
 MIT License
-
-## Disclaimer
-
-This is a proof-of-concept collateral-backed token. The collateral valuation is an estimate based on current market conditions. No guarantee of price stability or liquidity is provided. Use at your own risk.
