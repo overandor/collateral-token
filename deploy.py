@@ -93,7 +93,7 @@ class CUSDDeployer:
             print(f"❌ Merkle root update failed: {e}")
             raise
     
-    async def update_collateral_valuation(self, program: Program, vault_pda: PublicKey, valuation_usd: int):
+    async def update_collateral_valuation(self, program: Program, vault_pda: PublicKey, valuation_cents: int):
         """Update total collateral valuation (in cents)"""
         try:
             tx = await program.rpc["update_collateral_valuation"](
@@ -103,10 +103,10 @@ class CUSDDeployer:
                     "authority": self.wallet.public_key,
                 },
                 args={
-                    "new_valuation_usd": valuation_usd,
+                    "new_valuation_cents": valuation_cents,
                 }
             )
-            print(f"✅ Collateral valuation updated: ${valuation_usd / 100:,.2f} USD")
+            print(f"✅ Collateral valuation updated: ${valuation_cents / 100:,.2f} USD")
         except Exception as e:
             print(f"❌ Collateral valuation update failed: {e}")
             raise

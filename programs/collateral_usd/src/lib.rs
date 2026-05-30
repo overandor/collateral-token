@@ -35,6 +35,12 @@ pub mod collateral_usd {
         vault.merkle_root = [0u8; 32];
         vault.bump = ctx.bumps.vault;
 
+        emit!(VaultInitialized {
+            authority: vault.authority,
+            token_mint: vault.token_mint,
+            collateral_ratio_bps,
+        });
+
         msg!("Vault initialized with authority: {:?}", vault.authority);
         Ok(())
     }
@@ -48,6 +54,12 @@ pub mod collateral_usd {
         require!(vault.authority == ctx.accounts.authority.key(), CollateralError::Unauthorized);
 
         vault.merkle_root = new_root;
+
+        emit!(MerkleRootUpdated {
+            token_mint: vault.token_mint,
+            new_root,
+        });
+
         msg!("Evidence Merkle root updated: {:?}", new_root);
         Ok(())
     }
@@ -72,6 +84,12 @@ pub mod collateral_usd {
         )?;
 
         require!(current_ratio >= vault.collateral_ratio_bps as u64, CollateralError::InsufficientCollateral);
+
+        emit!(CollateralValuationUpdated {
+            token_mint: vault.token_mint,
+            total_collateral_cents: new_valuation_cents,
+            ratio_bps: current_ratio,
+        });
 
         msg!("Reviewed evidence valuation updated: {} cents", new_valuation_cents);
         msg!("Current ratio: {} bps", current_ratio);
@@ -121,6 +139,13 @@ pub mod collateral_usd {
         let vault = &mut ctx.accounts.vault;
         vault.total_supply_atoms = new_supply;
 
+        emit!(TokensMinted {
+            token_mint: vault.token_mint,
+            amount_atoms,
+            total_supply_atoms: vault.total_supply_atoms,
+            ratio_bps: new_ratio,
+        });
+
         msg!("Minted {} token atoms", amount_atoms);
         msg!("New total supply atoms: {}", vault.total_supply_atoms);
         msg!("Ratio: {} bps", new_ratio);
@@ -151,6 +176,12 @@ pub mod collateral_usd {
             .checked_sub(amount_atoms)
             .ok_or(CollateralError::MathOverflow)?;
 
+        emit!(TokensBurned {
+            token_mint: vault.token_mint,
+            amount_atoms,
+            total_supply_atoms: vault.total_supply_atoms,
+        });
+
         msg!("Burned {} token atoms", amount_atoms);
         msg!("New total supply atoms: {}", vault.total_supply_atoms);
         Ok(())
@@ -165,6 +196,12 @@ pub mod collateral_usd {
         require!(vault.authority == ctx.accounts.authority.key(), CollateralError::Unauthorized);
 
         vault.emergency_pause = pause;
+
+        emit!(EmergencyPauseSet {
+            token_mint: vault.token_mint,
+            paused: pause,
+        });
+
         msg!("Emergency pause: {}", pause);
         Ok(())
     }
@@ -185,6 +222,12 @@ pub mod collateral_usd {
         require!(current_ratio >= new_ratio_bps as u64, CollateralError::InsufficientCollateral);
 
         vault.collateral_ratio_bps = new_ratio_bps;
+
+        emit!(CollateralRatioUpdated {
+            token_mint: vault.token_mint,
+            new_ratio_bps,
+        });
+
         msg!("Ratio updated to {} bps", new_ratio_bps);
         Ok(())
     }
@@ -197,7 +240,15 @@ pub mod collateral_usd {
         let vault = &mut ctx.accounts.vault;
         require!(vault.authority == ctx.accounts.authority.key(), CollateralError::Unauthorized);
 
+        let old_authority = vault.authority;
         vault.authority = new_authority;
+
+        emit!(AuthorityTransferred {
+            token_mint: vault.token_mint,
+            old_authority,
+            new_authority,
+        });
+
         msg!("Authority transferred to: {:?}", new_authority);
         Ok(())
     }
@@ -390,4 +441,58 @@ pub enum CollateralError {
     InvalidMint,
     #[msg("Invalid ratio")]
     InvalidRatio,
+}
+
+#[event]
+pub struct VaultInitialized {
+    pub authority: Pubkey,
+    pub token_mint: Pubkey,
+    pub collateral_ratio_bps: u16,
+}
+
+#[event]
+pub struct MerkleRootUpdated {
+    pub token_mint: Pubkey,
+    pub new_root: [u8; 32],
+}
+
+#[event]
+pub struct CollateralValuationUpdated {
+    pub token_mint: Pubkey,
+    pub total_collateral_cents: u64,
+    pub ratio_bps: u64,
+}
+
+#[event]
+pub struct TokensMinted {
+    pub token_mint: Pubkey,
+    pub amount_atoms: u64,
+    pub total_supply_atoms: u64,
+    pub ratio_bps: u64,
+}
+
+#[event]
+pub struct TokensBurned {
+    pub token_mint: Pubkey,
+    pub amount_atoms: u64,
+    pub total_supply_atoms: u64,
+}
+
+#[event]
+pub struct EmergencyPauseSet {
+    pub token_mint: Pubkey,
+    pub paused: bool,
+}
+
+#[event]
+pub struct CollateralRatioUpdated {
+    pub token_mint: Pubkey,
+    pub new_ratio_bps: u16,
+}
+
+#[event]
+pub struct AuthorityTransferred {
+    pub token_mint: Pubkey,
+    pub old_authority: Pubkey,
+    pub new_authority: Pubkey,
 }
