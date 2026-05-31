@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { TrendingUp, Zap, BarChart3, DollarSign } from 'lucide-react'
+import { TrendingUp, TrendingDown } from 'lucide-react'
 import { appraiseLinguisticCollateral, type CharacterAppraisal } from '@/lib/character-appraisal'
 
 export function LanguageFiOracle() {
@@ -16,119 +16,85 @@ export function LanguageFiOracle() {
 
   if (loading || !appraisal) {
     return (
-      <div className="bg-card border border-border rounded-xl p-8 space-y-6 animate-pulse">
-        <div className="h-8 bg-muted rounded w-1/3"></div>
-        <div className="space-y-3">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-12 bg-muted rounded"></div>
-          ))}
-        </div>
+      <div className="flex-1 overflow-y-auto font-mono text-xs p-4 text-muted-foreground">
+        <div className="animate-pulse">INITIALIZING CHARACTER MARKET...</div>
       </div>
     )
   }
 
-  const topChars = appraisal.top_valued_characters.slice(0, 4)
+  const topChars = appraisal.top_valued_characters.slice(0, 6)
+  const moderate = appraisal.liquidification_scenarios.moderate
   const avgCharValue = (appraisal.additional_linguistic_value_usd / 330018).toFixed(4)
-  const moderateScenario = appraisal.liquidification_scenarios.moderate
 
   return (
-    <div className="bg-card border border-border rounded-xl p-8 space-y-6">
-      <div>
-        <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
-          <Zap className="w-5 h-5 gold-text" />
-          Language-Fi Oracle
-        </h3>
-        <p className="text-sm text-muted-foreground">Real character-level appraisal with USD liquidification</p>
-      </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Order Book Style Display */}
+      <div className="flex-1 overflow-y-auto font-mono text-xs space-y-1 p-3 divide-y divide-border">
+        {/* Market Header */}
+        <div className="grid grid-cols-4 gap-2 text-muted-foreground text-xxs font-bold pb-2 mb-2 border-b-2 border-border">
+          <div>CHAR</div>
+          <div className="text-right">FREQ%</div>
+          <div className="text-right">RARITY</div>
+          <div className="text-right">VALUE</div>
+        </div>
 
-      <div className="space-y-4">
-        {/* Top Valued Characters - Real Data */}
-        <div className="space-y-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <BarChart3 className="w-3 h-3" />
-            Top Valued Characters
-          </p>
-          {topChars.map((item) => (
+        {/* Character Order Book */}
+        {topChars.map((char) => (
+          <div
+            key={char.character}
+            className="grid grid-cols-4 gap-2 py-2 hover:bg-muted/30 transition-colors"
+          >
+            <div className="font-bold text-primary text-sm">'{char.character}'</div>
+            <div className="text-right text-muted-foreground">{(char.frequency * 100).toFixed(2)}</div>
             <div
-              key={item.character}
-              className="bg-background/50 border border-border rounded-lg p-3 flex items-center justify-between hover:border-primary/50 transition-colors"
+              className={`text-right font-semibold ${char.rarity_multiplier > 100 ? 'text-accent' : 'text-foreground'}`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center font-bold text-background text-sm">
-                  {item.character === ' ' ? '␣' : item.character}
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">'{item.character}' ({(item.frequency * 100).toFixed(2)}%)</p>
-                  <p className="text-xs text-muted-foreground">Rarity: {item.rarity_multiplier.toFixed(2)}x</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-sm font-bold gold-text">${(item.total_value / 10000).toFixed(2)}</span>
-              </div>
+              {char.rarity_multiplier.toFixed(1)}x
             </div>
-          ))}
-        </div>
-
-        {/* Real Metrics */}
-        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border">
-          <div className="bg-background/50 border border-border rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground">Semantic Velocity</span>
-            </div>
-            <p className="text-lg font-bold gold-text">{(appraisal.semantic_velocity * 100).toFixed(1)}%</p>
+            <div className="text-right text-foreground font-bold">${(char.total_value / 10000).toFixed(2)}</div>
           </div>
-          <div className="bg-background/50 border border-border rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="w-4 h-4 text-accent" />
-              <span className="text-xs text-muted-foreground">Avg Char Value</span>
-            </div>
-            <p className="text-lg font-bold gold-text">${avgCharValue}</p>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Real Liquidification Summary */}
-      <div className="border-t border-border pt-4 space-y-3">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Liquidification Analysis</p>
-        
-        <div className="bg-background/50 border border-border rounded-lg p-4 space-y-3">
-          <div className="flex justify-between items-start">
+      {/* Analysis Panel */}
+      <div className="border-t-2 border-border bg-muted p-3 font-mono text-xs space-y-2">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-muted-foreground text-xxs">SEMANTIC VELOCITY</div>
+            <div className="text-primary font-bold text-sm">{(appraisal.semantic_velocity * 100).toFixed(1)}%</div>
+          </div>
+          <div>
+            <div className="text-muted-foreground text-xxs">AVG CHAR USD</div>
+            <div className="text-primary font-bold text-sm">${avgCharValue}</div>
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-muted-foreground text-xxs">LIQUIDIFICATION</span>
+            <span className="text-accent font-bold text-sm">15% DISCOUNT</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-xs">
             <div>
-              <p className="text-xs text-muted-foreground">Current Language-Fi Value</p>
-              <p className="text-lg font-bold gold-text">${appraisal.language_fi_current_usd.toLocaleString()}</p>
+              <span className="text-muted-foreground">Current: </span>
+              <span className="text-foreground font-bold">${appraisal.language_fi_current_usd.toLocaleString()}</span>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">Projected Character Value</p>
-              <p className="text-lg font-bold gold-text">${appraisal.projected_character_value_usd.toLocaleString()}</p>
-            </div>
-          </div>
-          
-          <div className="border-t border-border pt-3">
-            <p className="text-xs text-muted-foreground mb-2">Moderate Liquidification Scenario</p>
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-xs text-muted-foreground">{moderateScenario.discount_percent}% discount applied</p>
-                <p className="text-lg font-bold gold-text">${moderateScenario.liquidification_usd.toLocaleString()}</p>
-              </div>
-              <div className="text-right text-xs">
-                <p className="text-muted-foreground">Additional</p>
-                <p className="text-muted-foreground">Collateral</p>
-              </div>
+            <div>
+              <span className="text-muted-foreground">Additional: </span>
+              <span className="text-accent font-bold">${moderate.liquidification_usd.toLocaleString()}</span>
             </div>
           </div>
-
-          <div className="border-t border-border pt-3">
-            <p className="text-xs text-muted-foreground mb-1">New Total Collateral</p>
-            <p className="text-xl font-bold gold-text">${appraisal.total_with_linguistic_usd.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground mt-1">Collateral Ratio: {(appraisal.estimated_collateral_ratio * 100).toFixed(1)}%</p>
+          <div className="mt-2 pt-2 border-t border-border">
+            <div className="flex items-center justify-between">
+              <span className="text-accent font-bold">NEW TOTAL COLLATERAL</span>
+              <span className="text-primary font-bold text-lg">${appraisal.total_with_linguistic_usd.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between text-xxs text-muted-foreground">
+              <span>Collateral Ratio</span>
+              <span className="text-accent">{(appraisal.estimated_collateral_ratio * 100).toFixed(1)}%</span>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
-        <p className="text-xs text-primary font-semibold">Real Data Source</p>
-        <p className="text-xs text-muted-foreground mt-1">{appraisal.sample_size.toLocaleString()} characters sampled across 330K+ files • Merkle-verified collateral • Rarity-weighted pricing</p>
       </div>
     </div>
   )

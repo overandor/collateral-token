@@ -1,67 +1,30 @@
 'use client'
 
-import { ArrowDown, ArrowUp, Lock } from 'lucide-react'
-
 export function TokenMechanics() {
+  const metrics = [
+    { label: 'CUSD SUPPLY', value: '551,500', unit: 'USD' },
+    { label: 'MINT CAP', value: '1,972,907', unit: 'USD' },
+    { label: 'BURN POOL', value: '0', unit: 'CUSD' },
+    { label: 'BACKING', value: '110%', unit: 'ratio' },
+    { label: 'EMERGENCY', value: 'ACTIVE', unit: 'status' },
+    { label: 'APY', value: '8.5%', unit: 'annual' },
+  ]
+
   return (
-    <div className="bg-card border border-border rounded-xl p-8 space-y-6">
-      <div>
-        <h3 className="text-xl font-bold mb-1">CUSD Token Mechanics</h3>
-        <p className="text-sm text-muted-foreground">Collateral-backed USD representation on Solana</p>
+    <div className="flex flex-col h-full font-mono text-xs">
+      <div className="flex-1 overflow-y-auto divide-y divide-border">
+        {metrics.map((m) => (
+          <div key={m.label} className="p-2 hover:bg-muted/30 transition-colors">
+            <div className="flex justify-between mb-1">
+              <span className="text-muted-foreground text-xxs">{m.label}</span>
+              <span className="text-xxs text-neutral">{m.unit}</span>
+            </div>
+            <div className="text-primary font-bold">{m.value}</div>
+          </div>
+        ))}
       </div>
-
-      <div className="space-y-4">
-        {/* Collateral Status */}
-        <div className="bg-background/50 border border-border rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-muted-foreground">Collateral Value</span>
-            <span className="text-2xl font-bold text-accent">$551.5K</span>
-          </div>
-          <div className="w-full bg-border rounded-full h-2 overflow-hidden">
-            <div className="bg-gradient-to-r from-primary to-accent h-full w-full rounded-full" />
-          </div>
-        </div>
-
-        {/* Ratio Display */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-background/50 border border-border rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Lock className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground">Current Ratio</span>
-            </div>
-            <p className="text-2xl font-bold text-primary">110%</p>
-          </div>
-          <div className="bg-background/50 border border-border rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Lock className="w-4 h-4 text-accent" />
-              <span className="text-xs text-muted-foreground">Required</span>
-            </div>
-            <p className="text-2xl font-bold text-accent">≥100%</p>
-          </div>
-        </div>
-
-        {/* Operations */}
-        <div className="space-y-3 pt-4 border-t border-border">
-          <div className="flex items-center gap-3 text-sm">
-            <ArrowUp className="w-4 h-4 text-primary" />
-            <div className="flex-1">
-              <p className="font-medium">Minting</p>
-              <p className="text-xs text-muted-foreground">Authority-gated token issuance</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <ArrowDown className="w-4 h-4 text-accent" />
-            <div className="flex-1">
-              <p className="font-medium">Burning & Redemption</p>
-              <p className="text-xs text-muted-foreground">Token owner redemption available</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
-        <p className="text-xs text-primary font-semibold">✓ Over-collateralized</p>
-        <p className="text-xs text-muted-foreground mt-1">Reviewed evidence token with emergency pause capability</p>
+      <div className="border-t border-border bg-muted p-2 text-xxs text-muted-foreground">
+        CUSD:CHAR RATIO 1:3
       </div>
     </div>
   )
